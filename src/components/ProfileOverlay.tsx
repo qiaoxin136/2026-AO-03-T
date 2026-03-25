@@ -15,6 +15,7 @@ interface Props {
   loading: boolean;
   samples: number;
   onSamplesChange: (n: number) => void;
+  onFinish: () => void;
   onClear: () => void;
 }
 
@@ -164,16 +165,19 @@ function ElevationChart({ data, onClose }: { data: ProfilePoint[]; onClose: () =
         {/* X axis label */}
         <text x={ML + PW / 2} y={CHART_H - 4} textAnchor="middle"
           fontSize={10} fill="#333" fontFamily="Arial,sans-serif" fontWeight="700">
-          Distance from Point 1
+          Distance
         </text>
       </svg>
     </div>
   );
 }
 
+// ── marker colours cycling through a palette ─────────────────────────────────
+const MARKER_COLORS = ['#1a73e8', '#f57c00', '#2e7d32', '#6a1b9a', '#c62828', '#00796b', '#ad1457', '#0277bd'];
+
 // ── main overlay ────────────────────────────────────────────────────────────
 
-export const ProfileOverlay = ({ active, points, profileData, loading, samples, onSamplesChange, onClear }: Props) => {
+export const ProfileOverlay = ({ active, points, profileData, loading, samples, onSamplesChange, onFinish, onClear }: Props) => {
   const map = useMap();
   const polylineRef = useRef<google.maps.Polyline | null>(null);
 
@@ -181,7 +185,7 @@ export const ProfileOverlay = ({ active, points, profileData, loading, samples, 
     const m = map;
     if (!m) return;
     if (polylineRef.current) { polylineRef.current.setMap(null); polylineRef.current = null; }
-    if (points.length === 2) {
+    if (points.length >= 2) {
       polylineRef.current = new google.maps.Polyline({
         path: points,
         strokeColor: '#555',
@@ -200,33 +204,21 @@ export const ProfileOverlay = ({ active, points, profileData, loading, samples, 
 
   return (
     <>
-      {/* Marker dot 1 – blue */}
-      {points[0] && (
-        <AdvancedMarker position={points[0]}>
+      {/* Numbered markers for each clicked point */}
+      {points.map((pt, i) => (
+        <AdvancedMarker key={i} position={pt}>
           <div style={{
             width: 24, height: 24, borderRadius: '50%',
-            background: '#1a73e8', border: '2.5px solid white',
+            background: MARKER_COLORS[i % MARKER_COLORS.length],
+            border: '2.5px solid white',
             boxShadow: '0 1px 6px rgba(0,0,0,0.45)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: 'white', fontSize: 11, fontWeight: 700, fontFamily: 'Arial,sans-serif',
-          }}>1</div>
+          }}>{i + 1}</div>
         </AdvancedMarker>
-      )}
+      ))}
 
-      {/* Marker dot 2 – orange */}
-      {points[1] && (
-        <AdvancedMarker position={points[1]}>
-          <div style={{
-            width: 24, height: 24, borderRadius: '50%',
-            background: '#f57c00', border: '2.5px solid white',
-            boxShadow: '0 1px 6px rgba(0,0,0,0.45)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: 11, fontWeight: 700, fontFamily: 'Arial,sans-serif',
-          }}>2</div>
-        </AdvancedMarker>
-      )}
-
-      {/* Status bar — only when tool is active */}
+      {/* Status bar — only when tool is active and no chart yet */}
       {active && !profileData && (
         <div style={{
           position: 'fixed', bottom: 36, left: '50%', transform: 'translateX(-50%)',
@@ -240,11 +232,17 @@ export const ProfileOverlay = ({ active, points, profileData, loading, samples, 
           {loading
             ? <span style={{ color: '#1a53c2' }}>Calculating elevation profile…</span>
             : points.length === 0
-              ? <span style={{ color: '#1a53c2' }}>Click <b>Point 1</b> on the map</span>
-              : <span style={{ color: '#f57c00' }}>Click <b>Point 2</b> on the map</span>
+              ? <span style={{ color: '#1a53c2' }}>Click to add points on the map (up to 15)</span>
+              : <span style={{ color: '#1a53c2' }}>
+                  {points.length} point{points.length > 1 ? 's' : ''} added
+                  {points.length < 15
+                    ? <span style={{ color: '#888', fontWeight: 400 }}> — click to add more or click <b>Done</b></span>
+                    : <span style={{ color: '#888', fontWeight: 400 }}> (max reached) — click <b>Done</b></span>
+                  }
+                </span>
           }
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 400, fontSize: 13, color: '#555' }}>
-            Points:
+            Samples:
             <input
               type="number"
               min={10}
@@ -261,6 +259,16 @@ export const ProfileOverlay = ({ active, points, profileData, loading, samples, 
               }}
             />
           </label>
+          {points.length >= 2 && !loading && (
+            <button
+              onClick={onFinish}
+              style={{
+                background: '#1a73e8', color: 'white', border: 'none',
+                borderRadius: 6, padding: '5px 14px', cursor: 'pointer',
+                fontSize: 13, fontWeight: 700,
+              }}
+            >Done</button>
+          )}
           <button onClick={onClear} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#888', fontSize: 16, lineHeight: 1, padding: '0 2px', marginLeft: 4 }}>✕</button>
         </div>
       )}

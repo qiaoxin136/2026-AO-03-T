@@ -206,11 +206,11 @@ const App = () => {
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileSamples, setProfileSamples] = useState(25);
 
-  const fetchProfile = (p1: { lat: number; lng: number }, p2: { lat: number; lng: number }, samples = profileSamples) => {
+  const fetchProfile = (pts: Array<{ lat: number; lng: number }>, samples = profileSamples) => {
     setProfileLoading(true);
     const elevator = new google.maps.ElevationService();
     elevator.getElevationAlongPath(
-      { path: [p1, p2], samples },
+      { path: pts, samples },
       (results, status) => {
         setProfileLoading(false);
         if (status !== "OK" || !results) return;
@@ -238,6 +238,10 @@ const App = () => {
         setProfileData(pts);
       }
     );
+  };
+
+  const handleProfileFinish = () => {
+    if (profilePoints.length >= 2) fetchProfile(profilePoints);
   };
 
   const handleProfileClear = () => {
@@ -1144,10 +1148,8 @@ const App = () => {
               fetchElevation(pt.lat, pt.lng);
             } else if (profileActive) {
               setProfilePoints(prev => {
-                if (prev.length >= 2) return prev; // already have 2
-                const next = [...prev, pt];
-                if (next.length === 2) fetchProfile(next[0], next[1]);
-                return next;
+                if (prev.length >= 15) return prev;
+                return [...prev, pt];
               });
             }
           }}
@@ -1174,6 +1176,7 @@ const App = () => {
             loading={profileLoading}
             samples={profileSamples}
             onSamplesChange={setProfileSamples}
+            onFinish={handleProfileFinish}
             onClear={handleProfileClear}
           />
           <StreetViewPanel
